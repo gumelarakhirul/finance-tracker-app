@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   StatusBar,
   StyleSheet,
   Text,
@@ -11,23 +10,35 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { supabase } from '../lib/supabase';
+import AppModal from '../components/AppModal';
 
 export default function Index() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState<'success' | 'error' | 'info'>('info');
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+
   useEffect(() => {
     checkSession();
   }, []);
 
+  const showModal = (
+    type: 'success' | 'error' | 'info',
+    title: string,
+    message: string
+  ) => {
+    setModalType(type);
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalVisible(true);
+  };
+
   const checkSession = async () => {
-    const { data, error } = await supabase.auth.getSession();
-
-    if (error) {
-      return;
-    }
-
+    const { data } = await supabase.auth.getSession();
     if (data.session) {
       router.replace('/home');
     }
@@ -35,26 +46,22 @@ export default function Index() {
 
   const handleSignUp = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Email dan password wajib diisi');
+      showModal('error', 'Oops', 'Email dan password wajib diisi.');
       return;
     }
 
     try {
       setLoading(true);
-
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signUp({ email, password });
 
       if (error) {
-        Alert.alert('Signup gagal', error.message);
+        showModal('error', 'Signup Gagal', error.message);
         return;
       }
 
-      Alert.alert('Berhasil', 'Akun berhasil dibuat');
+      showModal('success', 'Berhasil', 'Akun berhasil dibuat. Sekarang kamu bisa login.');
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Terjadi kesalahan saat signup');
+      showModal('error', 'Error', err.message || 'Terjadi kesalahan saat signup.');
     } finally {
       setLoading(false);
     }
@@ -62,26 +69,26 @@ export default function Index() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Email dan password wajib diisi');
+      showModal('error', 'Oops', 'Email dan password wajib diisi.');
       return;
     }
 
     try {
       setLoading(true);
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        Alert.alert('Login gagal', error.message);
+        showModal('error', 'Login Gagal', error.message);
         return;
       }
 
-      router.replace('/home');
+      showModal('success', 'Login Berhasil', 'Selamat datang di Finance Tracker.');
+      setTimeout(() => {
+        setModalVisible(false);
+        router.replace('/home');
+      }, 900);
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Terjadi kesalahan saat login');
+      showModal('error', 'Error', err.message || 'Terjadi kesalahan saat login.');
     } finally {
       setLoading(false);
     }
@@ -91,56 +98,70 @@ export default function Index() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4B37F3" />
 
-      <View style={styles.phoneFrame}>
-        <View style={styles.header}>
-          <Text style={styles.brand}>Finance Tracker</Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.title}>Welcome</Text>
-
-          <View style={styles.inputGroup}>
-            <TextInput
-              style={styles.input}
-              placeholder="Please enter your email address"
-              placeholderTextColor="#B7B7B7"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#B7B7B7"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={styles.signInButton}
-            onPress={handleSignIn}
-            disabled={loading}
-          >
-            <Text style={styles.signInButtonText}>
-              {loading ? 'Loading...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.signUpButton}
-            onPress={handleSignUp}
-            disabled={loading}
-          >
-            <Text style={styles.signUpButtonText}>Create Account</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.header}>
+        <Text style={styles.brand}>Finance Tracker</Text>
+        <Text style={styles.subtitle}>
+          Track income, expenses, and your financial goals with ease.
+        </Text>
       </View>
+
+      <View style={styles.card}>
+        <Text style={styles.title}>Welcome Back</Text>
+        <Text style={styles.caption}>Sign in to continue managing your finances</Text>
+
+        <View style={styles.inputWrapper}>
+          <Text style={styles.inputLabel}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="yourmail@example.com"
+            placeholderTextColor="#A4A4A4"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+
+        <View style={styles.inputWrapper}>
+          <Text style={styles.inputLabel}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            placeholderTextColor="#A4A4A4"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[styles.primaryButton, loading && styles.disabledButton]}
+          onPress={handleSignIn}
+          disabled={loading}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.primaryButtonText}>
+            {loading ? 'Loading...' : 'Sign In'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={handleSignUp}
+          disabled={loading}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.secondaryButtonText}>Create Account</Text>
+        </TouchableOpacity>
+      </View>
+
+      <AppModal
+        visible={modalVisible}
+        title={modalTitle}
+        message={modalMessage}
+        type={modalType}
+        onClose={() => setModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -148,80 +169,104 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#A8ACB7',
+    backgroundColor: '#EEF1F8',
     justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 20,
   },
-  phoneFrame: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-  },
   header: {
-    height: 180,
     backgroundColor: '#4B37F3',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    paddingTop: 36,
+    paddingBottom: 90,
   },
   brand: {
     color: '#FFFFFF',
     fontSize: 30,
     fontWeight: '800',
   },
+  subtitle: {
+    color: '#DAD5FF',
+    fontSize: 14,
+    lineHeight: 22,
+    marginTop: 10,
+    maxWidth: 260,
+  },
   card: {
     backgroundColor: '#FFFFFF',
-    marginTop: -24,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 32,
+    marginTop: -54,
+    borderRadius: 30,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 30,
+    shadowColor: '#121212',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 7,
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#181818',
     textAlign: 'center',
-    marginBottom: 24,
-    color: '#1F1F1F',
   },
-  inputGroup: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#E7E7E7',
-    marginBottom: 22,
-    paddingBottom: 10,
+  caption: {
+    marginTop: 8,
+    marginBottom: 24,
+    color: '#7B7B7B',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  inputWrapper: {
+    marginBottom: 18,
+  },
+  inputLabel: {
+    fontSize: 13,
+    color: '#616161',
+    marginBottom: 8,
+    fontWeight: '600',
   },
   input: {
-    fontSize: 14,
-    color: '#1F1F1F',
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#F5F7FC',
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#EBEEF5',
   },
-  signInButton: {
-    height: 48,
-    borderRadius: 6,
+  primaryButton: {
+    height: 52,
+    borderRadius: 16,
     backgroundColor: '#4B37F3',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
   },
-  signInButtonText: {
+  disabledButton: {
+    opacity: 0.6,
+  },
+  primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  signUpButton: {
-    height: 48,
-    borderRadius: 6,
+  secondaryButton: {
+    height: 52,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: '#4B37F3',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
+    backgroundColor: '#F8F7FF',
   },
-  signUpButtonText: {
+  secondaryButtonText: {
     color: '#4B37F3',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });
